@@ -5,7 +5,7 @@ import { signOut } from "@/app/actions";
 import { BottomNav } from "@/components/bottom-nav";
 
 type PageShellProps = {
-  active: "home" | "check-in" | "history" | "profile" | "settings";
+  active: "home" | "check-in" | "history" | "profile";
   title: string;
   subtitle?: string;
   children: React.ReactNode;

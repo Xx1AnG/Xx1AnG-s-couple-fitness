@@ -1,23 +1,22 @@
 import Link from "next/link";
-import { Dumbbell, History, Home, Settings, UserRound } from "lucide-react";
+import { Dumbbell, History, Home, UserRound } from "lucide-react";
 import { clsx } from "clsx";
 
 type BottomNavProps = {
-  active: "home" | "check-in" | "history" | "profile" | "settings";
+  active: "home" | "check-in" | "history" | "profile";
 };
 
 const navItems = [
   { href: "/", label: "首页", key: "home", icon: Home },
   { href: "/check-in", label: "打卡", key: "check-in", icon: Dumbbell },
   { href: "/history", label: "记录", key: "history", icon: History },
-  { href: "/settings", label: "设置", key: "settings", icon: Settings },
   { href: "/profile", label: "我的", key: "profile", icon: UserRound },
 ] as const;
 
 export function BottomNav({ active }: BottomNavProps) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/92 backdrop-blur">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pb-2 pt-1">
+      <div className="mx-auto grid max-w-md grid-cols-4 px-2 pb-2 pt-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.key;

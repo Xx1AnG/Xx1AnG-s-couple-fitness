@@ -23,7 +23,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
   return (
     <PageShell
-      active="settings"
+      active="profile"
       subtitle="提醒、偏好和后续功能准备"
       title="设置"
     >
