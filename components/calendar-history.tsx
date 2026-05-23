@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDashed,
-  Clock3,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -17,7 +16,6 @@ type CalendarHistoryProps = {
   month: string;
   previousMonth: string;
   nextMonth: string;
-  today: string;
   selectedDate: string;
   currentProfile: Profile;
   partnerProfile: Profile | null;
@@ -25,7 +23,7 @@ type CalendarHistoryProps = {
   imageUrls: Map<string, string>;
 };
 
-type DayState = "completed" | "missed" | "future";
+type DayState = "completed" | "missed";
 
 const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -39,11 +37,7 @@ function getLog(
   );
 }
 
-function getDayState(log: WorkoutLog | undefined, date: string, today: string) {
-  if (date > today) {
-    return "future";
-  }
-
+function getDayState(log: WorkoutLog | undefined) {
   return log ? "completed" : "missed";
 }
 
@@ -61,8 +55,7 @@ function StatusDot({
         className={clsx(
           "h-2 w-2 rounded-full",
           state === "completed" && "bg-emerald-500",
-          state === "missed" && "bg-rose-300",
-          state === "future" && "bg-stone-300",
+          state === "missed" && "bg-stone-300",
         )}
       />
       {label}
@@ -74,35 +67,19 @@ function DetailBlock({
   name,
   log,
   imageSrc,
-  date,
-  today,
 }: {
   name: string;
   log: WorkoutLog | undefined;
   imageSrc?: string;
-  date: string;
-  today: string;
 }) {
-  if (date > today) {
+  if (!log) {
     return (
       <div className="rounded-md bg-stone-50 p-3">
         <p className="flex items-center gap-2 text-sm font-semibold text-stone-700">
-          <Clock3 aria-hidden className="h-4 w-4" />
-          {name}
-        </p>
-        <p className="mt-2 text-sm text-stone-500">这一天还没到。</p>
-      </div>
-    );
-  }
-
-  if (!log) {
-    return (
-      <div className="rounded-md bg-rose-50 p-3">
-        <p className="flex items-center gap-2 text-sm font-semibold text-rose-900">
           <CircleDashed aria-hidden className="h-4 w-4" />
           {name}
         </p>
-        <p className="mt-2 text-sm text-rose-800">这天没有打卡记录。</p>
+        <p className="mt-2 text-sm text-stone-500">这天没有打卡记录。</p>
       </div>
     );
   }
@@ -140,7 +117,6 @@ export function CalendarHistory({
   month,
   previousMonth,
   nextMonth,
-  today,
   selectedDate,
   currentProfile,
   partnerProfile,
@@ -197,10 +173,11 @@ export function CalendarHistory({
 
             const ownLog = getLog(checkIns, currentProfile.id, date);
             const partnerLog = getLog(checkIns, partnerProfile?.id, date);
-            const ownState = getDayState(ownLog, date, today);
+            const ownState = getDayState(ownLog);
             const partnerState = partnerProfile
-              ? getDayState(partnerLog, date, today)
-              : "future";
+              ? getDayState(partnerLog)
+              : "missed";
+            const bothChecked = Boolean(partnerProfile && ownLog && partnerLog);
 
             return (
               <Link
@@ -208,9 +185,13 @@ export function CalendarHistory({
                 className={clsx(
                   "flex aspect-square min-h-16 flex-col justify-between rounded-md border p-1.5 text-left transition",
                   selectedDate === date
-                    ? "border-orange-400 bg-orange-50"
-                    : "border-stone-200 bg-white hover:bg-stone-50",
-                  date > today && "opacity-60",
+                    ? "border-orange-400"
+                    : "border-stone-200",
+                  bothChecked
+                    ? "bg-rose-50 hover:bg-rose-100"
+                    : selectedDate === date
+                      ? "bg-orange-50"
+                      : "bg-white hover:bg-stone-50",
                 )}
                 href={`/history?month=${month}&day=${date}`}
                 key={date}
@@ -230,9 +211,12 @@ export function CalendarHistory({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3 text-xs text-stone-600">
-          <StatusDot label="已完成" state="completed" />
-          <StatusDot label="未完成" state="missed" />
-          <StatusDot label="未来" state="future" />
+          <StatusDot label="已打卡" state="completed" />
+          <StatusDot label="未打卡" state="missed" />
+          <span className="inline-flex items-center gap-1 text-stone-600">
+            <span aria-hidden className="h-4 w-4 rounded border border-rose-100 bg-rose-50" />
+            双方已打卡
+          </span>
         </div>
       </section>
 
@@ -251,7 +235,6 @@ export function CalendarHistory({
 
         <div className="mt-4 grid gap-3">
           <DetailBlock
-            date={selectedDate}
             imageSrc={
               selectedOwnLog?.image_url
                 ? imageUrls.get(selectedOwnLog.image_url)
@@ -259,11 +242,9 @@ export function CalendarHistory({
             }
             log={selectedOwnLog}
             name={currentProfile.display_name}
-            today={today}
           />
           {partnerProfile ? (
             <DetailBlock
-              date={selectedDate}
               imageSrc={
                 selectedPartnerLog?.image_url
                   ? imageUrls.get(selectedPartnerLog.image_url)
@@ -271,7 +252,6 @@ export function CalendarHistory({
               }
               log={selectedPartnerLog}
               name={partnerProfile.display_name}
-              today={today}
             />
           ) : (
             <p className="rounded-md bg-stone-50 p-3 text-sm text-stone-500">

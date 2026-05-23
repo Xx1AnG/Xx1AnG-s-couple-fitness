@@ -104,7 +104,6 @@ export default async function HistoryPage({ searchParams }: PageProps) {
         partnerProfile={partnerProfile}
         previousMonth={addMonthsISO(month, -1)}
         selectedDate={selectedDate}
-        today={today}
       />
     </PageShell>
   );
