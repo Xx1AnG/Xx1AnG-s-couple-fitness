@@ -1,14 +1,16 @@
 import { CheckCircle2, CircleDashed } from "lucide-react";
 
 import type { WorkoutLog } from "@/lib/database.types";
+import { getIntensityLabel, getIntensityPoints } from "@/lib/workouts";
 
 type StatusCardProps = {
   label: string;
   name: string;
   checkIn: WorkoutLog | null;
+  imageSrc?: string;
 };
 
-export function StatusCard({ label, name, checkIn }: StatusCardProps) {
+export function StatusCard({ label, name, checkIn, imageSrc }: StatusCardProps) {
   const completed = Boolean(checkIn);
 
   return (
@@ -40,8 +42,19 @@ export function StatusCard({ label, name, checkIn }: StatusCardProps) {
           <p className="font-semibold">
             {checkIn.workout_type} · {checkIn.duration_minutes} 分钟
           </p>
+          <p className="mt-1 text-emerald-800">
+            {getIntensityLabel(checkIn.intensity_level)} ·{" "}
+            {getIntensityPoints(checkIn.intensity_level)} 分
+          </p>
           {checkIn.note ? (
             <p className="mt-1 line-clamp-2 text-emerald-800">{checkIn.note}</p>
+          ) : null}
+          {imageSrc ? (
+            <img
+              alt={`${name} 的训练照片`}
+              className="mt-3 aspect-[4/3] w-full rounded-md object-cover"
+              src={imageSrc}
+            />
           ) : null}
         </div>
       ) : (

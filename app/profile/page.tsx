@@ -1,4 +1,5 @@
-import { Copy, HeartHandshake } from "lucide-react";
+import Link from "next/link";
+import { Copy, HeartHandshake, Settings } from "lucide-react";
 
 import { ConnectPartnerForm } from "@/components/connect-partner-form";
 import { Notice } from "@/components/notice";
@@ -68,6 +69,28 @@ export default async function ProfilePage({ searchParams }: PageProps) {
         <p className="mt-4 rounded-md border border-dashed border-orange-300 bg-orange-50 px-3 py-3 text-center text-2xl font-semibold tracking-[0.18em] text-orange-900">
           {profile.partner_code}
         </p>
+      </SectionCard>
+
+      <SectionCard>
+        <div className="flex items-start gap-3">
+          <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+            <Settings aria-hidden className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-semibold text-stone-950">提醒设置</h2>
+            <p className="mt-1 text-sm leading-5 text-stone-600">
+              {profile.reminder_time
+                ? `当前提醒时间：${profile.reminder_time.slice(0, 5)}`
+                : "还没有设置每日提醒时间。"}
+            </p>
+            <Link
+              className="mt-3 inline-flex h-10 items-center justify-center rounded-md bg-stone-950 px-4 text-sm font-semibold text-white transition hover:bg-stone-800"
+              href="/settings"
+            >
+              打开设置
+            </Link>
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard>

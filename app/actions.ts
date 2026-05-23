@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 
 import { getTodayISO } from "@/lib/server-date";
 import { createClient } from "@/lib/supabase/server";
-import { WORKOUT_TYPE_SET } from "@/lib/workouts";
+import {
+  MAX_WORKOUT_IMAGE_SIZE,
+  WORKOUT_IMAGE_BUCKET,
+  WORKOUT_IMAGE_TYPES,
+} from "@/lib/workout-images";
+import { INTENSITY_LEVEL_SET, WORKOUT_TYPE_SET } from "@/lib/workouts";
 
 function redirectWith(path: string, params: Record<string, string>) {
   const searchParams = new URLSearchParams(params);
@@ -142,11 +147,17 @@ export async function connectPartner(formData: FormData) {
 
 export async function saveTodayCheckIn(formData: FormData) {
   const workoutType = getString(formData, "workout_type");
+  const intensityLevel = getString(formData, "intensity_level") || "standard";
   const duration = Number(getString(formData, "duration_minutes"));
   const note = getString(formData, "note");
+  const removeImage = getString(formData, "remove_image") === "on";
 
-  if (!WORKOUT_TYPE_SET.has(workoutType) || !Number.isInteger(duration)) {
-    redirectWith("/check-in", { error: "请填写有效的运动类型和时长。" });
+  if (
+    !WORKOUT_TYPE_SET.has(workoutType) ||
+    !INTENSITY_LEVEL_SET.has(intensityLevel) ||
+    !Number.isInteger(duration)
+  ) {
+    redirectWith("/check-in", { error: "请填写有效的运动类型、强度和时长。" });
   }
 
   if (duration < 1 || duration > 1440) {
@@ -163,14 +174,70 @@ export async function saveTodayCheckIn(formData: FormData) {
   }
 
   const workoutDate = await getTodayISO();
+  const { data: existingLog, error: existingError } = await supabase
+    .from("workout_logs")
+    .select("image_url")
+    .eq("user_id", user.id)
+    .eq("workout_date", workoutDate)
+    .maybeSingle();
+
+  if (existingError) {
+    redirectWith("/check-in", { error: existingError.message });
+  }
+
+  let imageUrl = existingLog?.image_url || null;
+  const image = formData.get("image");
+
+  if (image instanceof File && image.size > 0) {
+    if (image.size > MAX_WORKOUT_IMAGE_SIZE) {
+      redirectWith("/check-in", { error: "图片不能超过 5MB。" });
+    }
+
+    const extension = WORKOUT_IMAGE_TYPES.get(image.type);
+
+    if (!extension) {
+      redirectWith("/check-in", { error: "图片只支持 jpg、png 或 webp。" });
+    }
+
+    const imagePath = `${user.id}/${workoutDate}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from(WORKOUT_IMAGE_BUCKET)
+      .upload(imagePath, image, {
+        cacheControl: "3600",
+        contentType: image.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      redirectWith("/check-in", { error: uploadError.message });
+    }
+
+    if (imageUrl && imageUrl !== imagePath) {
+      await supabase.storage.from(WORKOUT_IMAGE_BUCKET).remove([imageUrl]);
+    }
+
+    imageUrl = imagePath;
+  } else if (removeImage && imageUrl) {
+    const { error: removeError } = await supabase.storage
+      .from(WORKOUT_IMAGE_BUCKET)
+      .remove([imageUrl]);
+
+    if (removeError) {
+      redirectWith("/check-in", { error: removeError.message });
+    }
+
+    imageUrl = null;
+  }
 
   const { error } = await supabase.from("workout_logs").upsert(
     {
       user_id: user.id,
       workout_date: workoutDate,
       workout_type: workoutType,
+      intensity_level: intensityLevel,
       duration_minutes: duration,
       note: note || null,
+      image_url: imageUrl,
     },
     {
       onConflict: "user_id,workout_date",
@@ -185,4 +252,34 @@ export async function saveTodayCheckIn(formData: FormData) {
   revalidatePath("/check-in");
   revalidatePath("/history");
   redirectWith("/", { message: "今天的打卡已保存。" });
+}
+
+export async function updateReminderSettings(formData: FormData) {
+  const reminderTime = getString(formData, "reminder_time");
+
+  if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
+    redirectWith("/settings", { error: "请选择有效的提醒时间。" });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ reminder_time: reminderTime || null })
+    .eq("id", user.id);
+
+  if (error) {
+    redirectWith("/settings", { error: error.message });
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/profile");
+  redirectWith("/settings", { message: "提醒时间已保存。" });
 }

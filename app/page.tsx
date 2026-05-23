@@ -8,13 +8,16 @@ import { PageShell } from "@/components/page-shell";
 import { SectionCard } from "@/components/section-card";
 import { StatusCard } from "@/components/status-card";
 import type { Profile, WorkoutLog } from "@/lib/database.types";
-import {
-  addDaysISO,
-  calculateCurrentStreak,
-  startOfWeekISO,
-} from "@/lib/date";
+import { startOfWeekISO } from "@/lib/date";
 import { getOrCreateProfile, requireUser } from "@/lib/auth";
 import { getTodayISO } from "@/lib/server-date";
+import { getWorkoutImageUrlMap } from "@/lib/workout-images";
+import {
+  calculateSharedStreaks,
+  calculateUserStreaks,
+  calculateWeeklyPoints,
+  logsForUser,
+} from "@/lib/workout-stats";
 
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -44,7 +47,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const profile = await getOrCreateProfile(user);
   const today = await getTodayISO();
   const weekStart = startOfWeekISO(today);
-  const historyStart = addDaysISO(today, -90);
 
   let partnerProfile: Profile | null = null;
 
@@ -67,7 +69,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     .from("workout_logs")
     .select("*")
     .in("user_id", userIds)
-    .gte("workout_date", historyStart)
     .lte("workout_date", today)
     .order("workout_date", { ascending: false });
 
@@ -79,13 +80,22 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const ownToday = findCheckIn(checkIns, profile.id, today) || null;
   const partnerToday =
     findCheckIn(checkIns, partnerProfile?.id, today) || null;
-  const ownDates = checkIns
-    .filter((checkIn) => checkIn.user_id === profile.id)
-    .map((checkIn) => checkIn.workout_date);
-  const currentStreak = calculateCurrentStreak(ownDates, today);
-  const weekCompletionCount = ownDates.filter(
-    (date) => date >= weekStart && date <= today,
+  const ownLogs = logsForUser(checkIns, profile.id);
+  const partnerLogs = logsForUser(checkIns, partnerProfile?.id);
+  const ownStreaks = calculateUserStreaks(ownLogs, today);
+  const partnerStreaks = partnerProfile
+    ? calculateUserStreaks(partnerLogs, today)
+    : { current: 0, longest: 0 };
+  const sharedStreaks = partnerProfile
+    ? calculateSharedStreaks(ownLogs, partnerLogs, today)
+    : { current: 0, longest: 0 };
+  const weekCompletionCount = ownLogs.filter(
+    (log) => log.workout_date >= weekStart && log.workout_date <= today,
   ).length;
+  const ownWeeklyPoints = calculateWeeklyPoints(ownLogs, weekStart, today);
+  const partnerWeeklyPoints = calculateWeeklyPoints(partnerLogs, weekStart, today);
+  const todayLogs = [ownToday, partnerToday].filter(Boolean) as WorkoutLog[];
+  const todayImageUrls = await getWorkoutImageUrlMap(supabase, todayLogs);
 
   return (
     <PageShell
@@ -99,15 +109,34 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard label="当前连续" suffix="天" value={currentStreak} />
+        <MetricCard label="我的连续" suffix="天" value={ownStreaks.current} />
+        <MetricCard label="我的最长" suffix="天" value={ownStreaks.longest} />
+        <MetricCard label="伴侣连续" suffix="天" value={partnerStreaks.current} />
+        <MetricCard label="伴侣最长" suffix="天" value={partnerStreaks.longest} />
+        <MetricCard label="共同连续" suffix="天" value={sharedStreaks.current} />
+        <MetricCard label="共同最长" suffix="天" value={sharedStreaks.longest} />
         <MetricCard label="本周完成" suffix="次" value={weekCompletionCount} />
+        <MetricCard label="我的周积分" suffix="分" value={ownWeeklyPoints} />
+        <MetricCard label="伴侣周积分" suffix="分" value={partnerWeeklyPoints} />
       </div>
 
       <div className="grid gap-3">
-        <StatusCard checkIn={ownToday} label="我的今日状态" name="我" />
+        <StatusCard
+          checkIn={ownToday}
+          imageSrc={
+            ownToday?.image_url ? todayImageUrls.get(ownToday.image_url) : undefined
+          }
+          label="我的今日状态"
+          name="我"
+        />
         {partnerProfile ? (
           <StatusCard
             checkIn={partnerToday}
+            imageSrc={
+              partnerToday?.image_url
+                ? todayImageUrls.get(partnerToday.image_url)
+                : undefined
+            }
             label="伴侣今日状态"
             name={partnerProfile.display_name}
           />

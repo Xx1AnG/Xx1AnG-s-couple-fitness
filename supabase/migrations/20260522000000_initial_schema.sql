@@ -27,6 +27,9 @@ create table public.profiles (
   ),
   partner_code text not null unique default public.generate_partner_code(),
   partner_id uuid references public.profiles(id) on delete set null,
+  reminder_time time check (
+    reminder_time is null or date_part('second', reminder_time) = 0
+  ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (partner_id is null or partner_id <> id),
@@ -39,8 +42,12 @@ create table public.workout_logs (
   user_id uuid not null references auth.users(id) on delete cascade,
   workout_date date not null,
   workout_type text not null check (char_length(trim(workout_type)) between 1 and 40),
+  intensity_level text not null default 'standard' check (
+    intensity_level in ('light', 'standard', 'challenge')
+  ),
   duration_minutes integer not null check (duration_minutes between 1 and 1440),
   note text check (note is null or char_length(note) <= 500),
+  image_url text check (image_url is null or char_length(image_url) <= 500),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, workout_date)
@@ -215,6 +222,20 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.workout_logs enable row level security;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'workout-images',
+  'workout-images',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']::text[]
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 create policy "Profiles can be read by owner or connected partner"
 on public.profiles
 for select
@@ -265,12 +286,55 @@ for delete
 to authenticated
 using (user_id = auth.uid());
 
+create policy "Workout images can be read by owner or connected partner"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'workout-images'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or public.is_connected_partner(((storage.foldername(name))[1])::uuid)
+  )
+);
+
+create policy "Users can insert their own workout images"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'workout-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "Users can update their own workout images"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'workout-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'workout-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "Users can delete their own workout images"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'workout-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
 grant usage on schema public to anon, authenticated;
 
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant insert (id, display_name) on public.profiles to authenticated;
-grant update (display_name) on public.profiles to authenticated;
+grant update (display_name, reminder_time) on public.profiles to authenticated;
 
 revoke all on public.workout_logs from anon, authenticated;
 grant select, insert, update, delete on public.workout_logs to authenticated;

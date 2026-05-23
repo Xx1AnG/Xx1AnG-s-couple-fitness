@@ -15,6 +15,7 @@ export type Database = {
           display_name: string;
           partner_code: string;
           partner_id: string | null;
+          reminder_time: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -23,6 +24,7 @@ export type Database = {
           display_name: string;
           partner_code?: string;
           partner_id?: string | null;
+          reminder_time?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -31,6 +33,7 @@ export type Database = {
           display_name?: string;
           partner_code?: string;
           partner_id?: string | null;
+          reminder_time?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -57,8 +60,10 @@ export type Database = {
           user_id: string;
           workout_date: string;
           workout_type: string;
+          intensity_level: string;
           duration_minutes: number;
           note: string | null;
+          image_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -67,8 +72,10 @@ export type Database = {
           user_id: string;
           workout_date: string;
           workout_type: string;
+          intensity_level?: string;
           duration_minutes: number;
           note?: string | null;
+          image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -77,8 +84,10 @@ export type Database = {
           user_id?: string;
           workout_date?: string;
           workout_type?: string;
+          intensity_level?: string;
           duration_minutes?: number;
           note?: string | null;
+          image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,15 +1,61 @@
-import { HistoryList } from "@/components/history-list";
+import { CalendarHistory } from "@/components/calendar-history";
 import { PageShell } from "@/components/page-shell";
 import type { Profile } from "@/lib/database.types";
-import { addDaysISO, dateRangeDescending } from "@/lib/date";
+import {
+  addMonthsISO,
+  monthBoundsISO,
+  normalizeMonth,
+} from "@/lib/date";
 import { getOrCreateProfile, requireUser } from "@/lib/auth";
 import { getTodayISO } from "@/lib/server-date";
+import { getWorkoutImageUrlMap } from "@/lib/workout-images";
 
-export default async function HistoryPage() {
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function getParam(
+  params: Record<string, string | string[] | undefined>,
+  key: string,
+) {
+  const value = params[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function getSelectedDate(
+  day: string | undefined,
+  month: string,
+  today: string,
+  monthEnd: string,
+) {
+  if (day && /^\d{4}-\d{2}-\d{2}$/.test(day) && day.startsWith(month)) {
+    return day;
+  }
+
+  if (today.startsWith(month)) {
+    return today;
+  }
+
+  if (monthEnd < today) {
+    return monthEnd;
+  }
+
+  return `${month}-01`;
+}
+
+export default async function HistoryPage({ searchParams }: PageProps) {
+  const params = searchParams ? await searchParams : {};
   const { supabase, user } = await requireUser();
   const profile = await getOrCreateProfile(user);
   const today = await getTodayISO();
-  const fromDate = addDaysISO(today, -29);
+  const month = normalizeMonth(getParam(params, "month"), today);
+  const { start: monthStart, end: monthEnd } = monthBoundsISO(month);
+  const selectedDate = getSelectedDate(
+    getParam(params, "day"),
+    month,
+    today,
+    monthEnd,
+  );
 
   let partnerProfile: Profile | null = null;
 
@@ -32,8 +78,8 @@ export default async function HistoryPage() {
     .from("workout_logs")
     .select("*")
     .in("user_id", userIds)
-    .gte("workout_date", fromDate)
-    .lte("workout_date", today)
+    .gte("workout_date", monthStart)
+    .lte("workout_date", monthEnd)
     .order("workout_date", { ascending: false });
 
   if (error) {
@@ -41,18 +87,24 @@ export default async function HistoryPage() {
   }
 
   const checkIns = checkInsData ?? [];
+  const imageUrls = await getWorkoutImageUrlMap(supabase, checkIns);
 
   return (
     <PageShell
       active="history"
-      subtitle="最近 30 天双方打卡概览"
-      title="历史记录"
+      subtitle="按月份查看双方打卡状态"
+      title="历史日历"
     >
-      <HistoryList
+      <CalendarHistory
         checkIns={checkIns}
         currentProfile={profile}
-        dates={dateRangeDescending(today, 30)}
+        imageUrls={imageUrls}
+        month={month}
+        nextMonth={addMonthsISO(month, 1)}
         partnerProfile={partnerProfile}
+        previousMonth={addMonthsISO(month, -1)}
+        selectedDate={selectedDate}
+        today={today}
       />
     </PageShell>
   );

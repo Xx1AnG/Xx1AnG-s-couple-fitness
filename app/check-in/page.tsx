@@ -4,6 +4,7 @@ import { PageShell } from "@/components/page-shell";
 import { SectionCard } from "@/components/section-card";
 import { getOrCreateProfile, requireUser } from "@/lib/auth";
 import { getTodayISO } from "@/lib/server-date";
+import { getWorkoutImageUrlMap } from "@/lib/workout-images";
 
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -34,6 +35,14 @@ export default async function CheckInPage({ searchParams }: PageProps) {
     throw new Error(error.message);
   }
 
+  const imageUrls = await getWorkoutImageUrlMap(
+    supabase,
+    checkIn ? [checkIn] : [],
+  );
+  const imageSrc = checkIn?.image_url
+    ? imageUrls.get(checkIn.image_url)
+    : undefined;
+
   return (
     <PageShell
       active="check-in"
@@ -58,7 +67,7 @@ export default async function CheckInPage({ searchParams }: PageProps) {
           </span>
         </div>
 
-        <CheckInForm checkIn={checkIn} />
+        <CheckInForm checkIn={checkIn} imageSrc={imageSrc} />
       </SectionCard>
     </PageShell>
   );
