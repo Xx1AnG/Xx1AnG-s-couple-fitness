@@ -28,7 +28,7 @@ export default async function HistoryPage() {
   }
 
   const userIds = [profile.id, partnerProfile?.id].filter(Boolean) as string[];
-  const { data: checkIns = [], error } = await supabase
+  const { data: checkInsData, error } = await supabase
     .from("workout_logs")
     .select("*")
     .in("user_id", userIds)
@@ -39,6 +39,8 @@ export default async function HistoryPage() {
   if (error) {
     throw new Error(error.message);
   }
+
+  const checkIns = checkInsData ?? [];
 
   return (
     <PageShell

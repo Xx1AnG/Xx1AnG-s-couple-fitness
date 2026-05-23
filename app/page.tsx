@@ -63,7 +63,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   const userIds = [profile.id, partnerProfile?.id].filter(Boolean) as string[];
-  const { data: checkIns = [], error: checkInsError } = await supabase
+  const { data: checkInsData, error: checkInsError } = await supabase
     .from("workout_logs")
     .select("*")
     .in("user_id", userIds)
@@ -75,6 +75,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     throw new Error(checkInsError.message);
   }
 
+  const checkIns = checkInsData ?? [];
   const ownToday = findCheckIn(checkIns, profile.id, today) || null;
   const partnerToday =
     findCheckIn(checkIns, partnerProfile?.id, today) || null;
