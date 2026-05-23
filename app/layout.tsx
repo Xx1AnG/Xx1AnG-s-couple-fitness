@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "移动优先的情侣健身打卡 MVP",
 };
 
+export const preferredRegion = "hkg1";
+
 export default function RootLayout({
   children,
 }: Readonly<{
