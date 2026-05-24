@@ -1,3 +1,4 @@
+import { CheckInSuccessModal } from "@/components/check-in-success-modal";
 import { CheckInForm } from "@/components/check-in-form";
 import { Notice } from "@/components/notice";
 import { PageShell } from "@/components/page-shell";
@@ -24,16 +25,13 @@ export default async function CheckInPage({ searchParams }: PageProps) {
   await getOrCreateProfile(user);
   const today = await getTodayISO();
 
-  const { data: checkIn, error } = await supabase
+  const { data: checkInData, error } = await supabase
     .from("workout_logs")
     .select("*")
     .eq("user_id", user.id)
     .eq("workout_date", today)
     .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  const checkIn = error ? null : checkInData;
 
   const imageUrls = await getWorkoutImageUrlMap(
     supabase,
@@ -50,9 +48,10 @@ export default async function CheckInPage({ searchParams }: PageProps) {
       title="今日打卡"
     >
       <Notice
-        error={getParam(params, "error")}
+        error={getParam(params, "error") || error?.message}
         message={getParam(params, "message")}
       />
+      <CheckInSuccessModal open={getParam(params, "success") === "1"} />
 
       <SectionCard>
         <div className="mb-4 flex items-center justify-between gap-3">

@@ -58,10 +58,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
+      console.error("Failed to load partner profile", error);
+    } else {
+      partnerProfile = data;
     }
-
-    partnerProfile = data;
   }
 
   const userIds = [profile.id, partnerProfile?.id].filter(Boolean) as string[];
@@ -73,7 +73,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     .order("workout_date", { ascending: false });
 
   if (checkInsError) {
-    throw new Error(checkInsError.message);
+    console.error("Failed to load workout logs", checkInsError);
   }
 
   const checkIns = checkInsData ?? [];

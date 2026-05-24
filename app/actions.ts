@@ -253,7 +253,7 @@ export async function saveTodayCheckIn(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/check-in");
   revalidatePath("/history");
-  redirectWith("/", { message: "今天的打卡已保存。" });
+  redirectWith("/check-in", { success: "1" });
 }
 
 export async function updateReminderSettings(formData: FormData) {
