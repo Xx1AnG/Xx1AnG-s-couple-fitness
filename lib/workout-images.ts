@@ -11,6 +11,31 @@ export const WORKOUT_IMAGE_TYPES = new Map([
   ["image/webp", "webp"],
 ]);
 
+export type UploadedWorkoutImage = {
+  size: number;
+  type: string;
+  name?: string;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+};
+
+export function getUploadedWorkoutImage(value: FormDataEntryValue | null) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Partial<UploadedWorkoutImage>;
+
+  if (
+    typeof candidate.size !== "number" ||
+    typeof candidate.type !== "string" ||
+    typeof candidate.arrayBuffer !== "function"
+  ) {
+    return null;
+  }
+
+  return candidate as UploadedWorkoutImage;
+}
+
 export async function getWorkoutImageUrlMap(
   supabase: SupabaseClient<Database>,
   logs: WorkoutLog[],
@@ -29,7 +54,8 @@ export async function getWorkoutImageUrlMap(
     .createSignedUrls(paths, 60 * 60);
 
   if (error) {
-    throw new Error(error.message);
+    console.error("Failed to create workout image signed URLs", error);
+    return urls;
   }
 
   data.forEach((item) => {

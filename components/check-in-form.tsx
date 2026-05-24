@@ -1,6 +1,7 @@
-import { ImagePlus, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { saveTodayCheckIn } from "@/app/actions";
+import { WorkoutImageField } from "@/components/workout-image-field";
 import type { WorkoutLog } from "@/lib/database.types";
 import {
   getIntensityLabel,
@@ -99,47 +100,7 @@ export function CheckInForm({ checkIn, imageSrc }: CheckInFormProps) {
         />
       </div>
 
-      <div>
-        <label className="text-sm font-medium text-stone-700" htmlFor="image">
-          训练照片（可选）
-        </label>
-        <div className="mt-1 rounded-md border border-dashed border-stone-300 bg-white px-3 py-4">
-          {imageSrc ? (
-            <img
-              alt="当前训练照片"
-              className="mb-3 aspect-[4/3] w-full rounded-md object-cover"
-              src={imageSrc}
-            />
-          ) : null}
-          <label
-            className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-orange-50 px-4 text-sm font-semibold text-orange-800 transition hover:bg-orange-100"
-            htmlFor="image"
-          >
-            <ImagePlus aria-hidden className="h-4 w-4" />
-            {imageSrc ? "更换照片" : "添加照片"}
-          </label>
-          <input
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            id="image"
-            name="image"
-            type="file"
-          />
-          <p className="mt-2 text-xs leading-5 text-stone-500">
-            支持 jpg、png、webp，最大 5MB。
-          </p>
-          {imageSrc ? (
-            <label className="mt-3 flex items-center gap-2 text-sm text-stone-600">
-              <input
-                className="h-4 w-4 rounded border-stone-300 text-orange-600"
-                name="remove_image"
-                type="checkbox"
-              />
-              删除当前照片
-            </label>
-          ) : null}
-        </div>
-      </div>
+      <WorkoutImageField imageSrc={imageSrc} />
 
       <button
         className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition hover:bg-orange-700"

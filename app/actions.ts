@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getTodayISO } from "@/lib/server-date";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getUploadedWorkoutImage,
   MAX_WORKOUT_IMAGE_SIZE,
   WORKOUT_IMAGE_BUCKET,
   WORKOUT_IMAGE_TYPES,
@@ -186,9 +187,9 @@ export async function saveTodayCheckIn(formData: FormData) {
   }
 
   let imageUrl = existingLog?.image_url || null;
-  const image = formData.get("image");
+  const image = getUploadedWorkoutImage(formData.get("image"));
 
-  if (image instanceof File && image.size > 0) {
+  if (image && image.size > 0) {
     if (image.size > MAX_WORKOUT_IMAGE_SIZE) {
       redirectWith("/check-in", { error: "图片不能超过 5MB。" });
     }
@@ -200,9 +201,10 @@ export async function saveTodayCheckIn(formData: FormData) {
     }
 
     const imagePath = `${user.id}/${workoutDate}.${extension}`;
+    const imageData = await image.arrayBuffer();
     const { error: uploadError } = await supabase.storage
       .from(WORKOUT_IMAGE_BUCKET)
-      .upload(imagePath, image, {
+      .upload(imagePath, imageData, {
         cacheControl: "3600",
         contentType: image.type,
         upsert: true,
